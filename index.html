@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YGP工具箱</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); height: 100vh; display: flex; flex-direction: column; }
+        .header { background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); padding: 15px 30px; color: white; }
+        .header h1 { font-size: 24px; }
+        .container { display: flex; flex: 1; padding: 20px; gap: 15px; height: calc(100vh - 60px); }
+        .sidebar { width: 220px; background: white; border-radius: 12px; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+        .sidebar-title { font-size: 12px; color: #666; font-weight: 600; margin-bottom: 5px; text-transform: uppercase; }
+        .tool-btn { padding: 12px 16px; border: none; background: #f5f7fa; border-radius: 8px; cursor: pointer; font-size: 14px; color: #333; transition: all 0.2s; text-align: left; }
+        .tool-btn:hover { transform: translateX(3px); background: #e8ecef; }
+        .tool-btn.active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .main-content { flex: 1; display: flex; gap: 15px; }
+        .panel { flex: 1; background: white; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; }
+        .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .panel-title { font-size: 14px; font-weight: 600; color: #333; }
+        .btn { padding: 6px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; transition: all 0.2s; }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(102,126,234,0.4); }
+        .btn-secondary { background: #f5f7fa; color: #333; }
+        .btn-secondary:hover { background: #e8ecef; }
+        textarea { flex: 1; width: 100%; border: 2px solid #e0e0e0; border-radius: 8px; padding: 12px; font-size: 13px; font-family: 'Consolas', 'Monaco', monospace; resize: none; line-height: 1.5; }
+        textarea:focus { outline: none; border-color: #667eea; }
+        .panel-actions { display: flex; gap: 8px; }
+        .center-btn { display: flex; align-items: center; justify-content: center; padding: 0 20px; }
+        .process-btn { padding: 12px 24px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s; white-space: nowrap; }
+        .process-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(102,126,234,0.4); }
+        .process-btn:active { transform: translateY(0); }
+        .csv-upload-area { border: 2px dashed #ccc; border-radius: 8px; padding: 20px; text-align: center; color: #888; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; }
+        .csv-upload-area:hover { border-color: #667eea; color: #667eea; background: #f8f9ff; }
+        .csv-upload-area.dragover { border-color: #667eea; background: #f0f2ff; }
+        .csv-upload-area input[type="file"] { display: none; }
+        .tool-panel { display: none; flex-direction: column; flex: 1; }
+        .tool-panel.active { display: flex; }
+        .input-mode-tabs { display: flex; gap: 0; margin-bottom: 10px; }
+        .mode-tab { padding: 6px 14px; border: 1px solid #ddd; background: #f9f9f9; cursor: pointer; font-size: 13px; transition: all 0.2s; }
+        .mode-tab:first-child { border-radius: 6px 0 0 6px; }
+        .mode-tab:last-child { border-radius: 0 6px 6px 0; }
+        .mode-tab.active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-color: #667eea; }
+        .csv-file-info { font-size: 12px; color: #666; margin-bottom: 8px; }
+        .download-btn { padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; transition: all 0.2s; }
+        .download-btn:hover { background: #218838; }
+        .download-btn:disabled { background: #ccc; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🛠️ YGP工具箱</h1>
+    </div>
+    <div class="container">
+        <div class="sidebar">
+            <div class="sidebar-title">工具列表</div>
+            <button class="tool-btn active" data-tool="json">📋 JSON格式化</button>
+            <button class="tool-btn" data-tool="list">📝 List格式化</button>
+            <button class="tool-btn" data-tool="compress">🗜️ 文本压缩</button>
+            <button class="tool-btn" data-tool="dedupe">🔄 文本去重</button>
+            <button class="tool-btn" data-tool="sum">🔢 数字求和</button>
+            <button class="tool-btn" data-tool="csv2xlsx">📊 CSV转Excel</button>
+        </div>
+        <div class="main-content">
+            <!-- 通用工具面板 -->
+            <div class="panel" id="commonPanel">
+                <div class="panel-header">
+                    <div class="panel-title">原始文本</div>
+                    <div class="panel-actions">
+                        <button class="btn btn-secondary" onclick="clearInput()">清空</button>
+                        <button class="btn btn-secondary" onclick="pasteText()">粘贴</button>
+                    </div>
+                </div>
+                <div id="dedupeModeTabs" style="display:none; margin-bottom:10px;">
+                    <div class="input-mode-tabs">
+                        <button class="mode-tab active" data-mode="line">按行去重</button>
+                        <button class="mode-tab" data-mode="space">按空格去重</button>
+                    </div>
+                </div>
+                <div id="compressModeTabs" style="display:none; margin-bottom:10px;">
+                    <div class="input-mode-tabs">
+                        <button class="mode-tab active" data-mode="space">换行转空格</button>
+                        <button class="mode-tab" data-mode="remove">移除所有空白</button>
+                    </div>
+                </div>
+                <textarea id="inputText" placeholder="请输入文本..."></textarea>
+            </div>
+            <div class="center-btn" id="commonCenter">
+                <button class="process-btn" onclick="processText()">处理 →</button>
+            </div>
+            <div class="panel" id="commonOutput">
+                <div class="panel-header">
+                    <div class="panel-title">输出结果</div>
+                    <div class="panel-actions">
+                        <button class="btn btn-secondary" onclick="clearOutput()">清空</button>
+                        <button class="btn btn-primary" onclick="copyResult()">复制结果</button>
+                    </div>
+                </div>
+                <textarea id="outputText" placeholder="处理结果..." readonly></textarea>
+            </div>
+
+            <!-- CSV转Excel专用面板 -->
+            <div class="panel" id="csvPanel" style="display:none;">
+                <div class="panel-header">
+                    <div class="panel-title">CSV输入</div>
+                    <div class="panel-actions">
+                        <div class="input-mode-tabs">
+                            <button class="mode-tab active" onclick="switchCsvMode('file')">上传文件</button>
+                            <button class="mode-tab" onclick="switchCsvMode('text')">粘贴文本</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="csvFileMode" style="flex:1; display:flex; flex-direction:column;">
+                    <div class="csv-upload-area" id="csvDropZone" onclick="document.getElementById('csvFileInput').click()">
+                        <input type="file" id="csvFileInput" accept=".csv,.txt" onchange="handleCsvFile(event)">
+                        <div style="font-size:24px; margin-bottom:8px;">📁</div>
+                        <div>点击选择CSV文件 或 拖拽文件到此处</div>
+                    </div>
+                    <div class="csv-file-info" id="csvFileInfo">未选择文件</div>
+                    <textarea id="csvTextPreview" placeholder="文件预览..." readonly style="flex:1; min-height:100px;"></textarea>
+                </div>
+                <div id="csvTextMode" style="flex:1; display:none; flex-direction:column;">
+                    <textarea id="csvTextInput" placeholder="请粘贴CSV文本内容..." style="flex:1;"></textarea>
+                </div>
+            </div>
+            <div class="center-btn" id="csvCenter" style="display:none;">
+                <button class="process-btn" onclick="convertCsv2Xlsx()">转换 ↓</button>
+            </div>
+            <div class="panel" id="csvOutput" style="display:none;">
+                <div class="panel-header">
+                    <div class="panel-title">转换结果</div>
+                    <div class="panel-actions">
+                        <button class="download-btn" id="downloadXlsxBtn" onclick="downloadXlsx()" disabled>⬇ 下载XLSX</button>
+                    </div>
+                </div>
+                <textarea id="csvOutputText" placeholder="转换预览..." readonly style="flex:1;"></textarea>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentTool = 'json';
+        let csvMode = 'file'; // 'file' or 'text'
+        let csvWorkbook = null;
+        let csvFileName = 'output';
+        let dedupeMode = 'line'; // 'line' or 'space'
+        let compressMode = 'space'; // 'space' or 'remove'
+
+        // 工具切换
+        document.querySelectorAll('.tool-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentTool = this.dataset.tool;
+                togglePanels();
+            });
+        });
+
+        // 去重模式切换
+        document.querySelectorAll('#dedupeModeTabs .mode-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('#dedupeModeTabs .mode-tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                dedupeMode = this.dataset.mode;
+            });
+        });
+
+        // 压缩模式切换
+        document.querySelectorAll('#compressModeTabs .mode-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('#compressModeTabs .mode-tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                compressMode = this.dataset.mode;
+            });
+        });
+
+        // 切换面板显示
+        function togglePanels() {
+            const isCsv = currentTool === 'csv2xlsx';
+            const isDedupe = currentTool === 'dedupe';
+            const isCompress = currentTool === 'compress';
+            document.getElementById('commonPanel').style.display = isCsv ? 'none' : 'flex';
+            document.getElementById('commonCenter').style.display = isCsv ? 'none' : 'flex';
+            document.getElementById('commonOutput').style.display = isCsv ? 'none' : 'flex';
+            document.getElementById('csvPanel').style.display = isCsv ? 'flex' : 'none';
+            document.getElementById('csvCenter').style.display = isCsv ? 'flex' : 'none';
+            document.getElementById('csvOutput').style.display = isCsv ? 'flex' : 'none';
+            document.getElementById('dedupeModeTabs').style.display = isDedupe ? 'block' : 'none';
+            document.getElementById('compressModeTabs').style.display = isCompress ? 'block' : 'none';
+        }
+
+        // CSV模式切换
+        function switchCsvMode(mode) {
+            csvMode = mode;
+            document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('csvFileMode').style.display = mode === 'file' ? 'flex' : 'none';
+            document.getElementById('csvTextMode').style.display = mode === 'text' ? 'flex' : 'none';
+        }
+
+        // 拖拽上传
+        const dropZone = document.getElementById('csvDropZone');
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('dragover'); });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file) loadCsvFile(file);
+        });
+
+        // 处理CSV文件
+        function handleCsvFile(event) {
+            const file = event.target.files[0];
+            if (file) loadCsvFile(file);
+        }
+
+        function loadCsvFile(file) {
+            csvFileName = file.name.replace(/\.(csv|txt)$/i, '');
+            document.getElementById('csvFileInfo').textContent = `已选择: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const text = e.target.result;
+                document.getElementById('csvTextPreview').value = text;
+            };
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        // CSV转XLSX
+        function convertCsv2Xlsx() {
+            try {
+                let csvText = '';
+                if (csvMode === 'file') {
+                    csvText = document.getElementById('csvTextPreview').value;
+                } else {
+                    csvText = document.getElementById('csvTextInput').value;
+                }
+
+                if (!csvText.trim()) {
+                    document.getElementById('csvOutputText').value = '错误: 没有CSV内容，请上传文件或粘贴文本';
+                    return;
+                }
+
+                // 解析CSV
+                const workbook = XLSX.read(csvText, { type: 'string' });
+                csvWorkbook = workbook;
+
+                // 预览内容
+                const sheetName = workbook.SheetNames[0];
+                const sheet = workbook.Sheets[sheetName];
+                const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+                let preview = `工作表: ${sheetName}\n`;
+                preview += `行数: ${jsonData.length}\n\n`;
+                preview += '--- 数据预览 ---\n';
+                const maxPreview = Math.min(jsonData.length, 50);
+                for (let i = 0; i < maxPreview; i++) {
+                    preview += (i + 1) + '| ' + (jsonData[i] || []).join('\t') + '\n';
+                }
+                if (jsonData.length > 50) {
+                    preview += `... 共 ${jsonData.length} 行，仅预览前50行\n`;
+                }
+                preview += `\n✅ 转换成功！点击"下载XLSX"按钮保存文件`;
+
+                document.getElementById('csvOutputText').value = preview;
+                document.getElementById('downloadXlsxBtn').disabled = false;
+            } catch (e) {
+                document.getElementById('csvOutputText').value = '错误: ' + e.message;
+            }
+        }
+
+        // 下载XLSX
+        function downloadXlsx() {
+            if (!csvWorkbook) return;
+
+            try {
+                // 生成XLSX文件内容
+                const xlsxData = XLSX.write(csvWorkbook, { bookType: 'xlsx', type: 'array' });
+                // 转换为base64
+                const base64Content = arrayBufferToBase64(xlsxData);
+
+                // 检测是否在pywebview环境中
+                if (window.pywebview) {
+                    // 使用pywebview API保存文件
+                    window.pywebview.api.save_xlsx_file({
+                        filename: csvFileName + '.xlsx',
+                        content: base64Content
+                    }).then(result => {
+                        if (result.success) {
+                            alert('文件保存成功: ' + result.path);
+                        } else {
+                            alert(result.message || '保存失败');
+                        }
+                    }).catch(err => {
+                        alert('保存失败: ' + err.message);
+                    });
+                } else {
+                    // 浏览器环境，使用原生的XLSX.writeFile
+                    XLSX.writeFile(csvWorkbook, csvFileName + '.xlsx');
+                }
+            } catch (e) {
+                alert('下载失败: ' + e.message);
+            }
+        }
+
+        // ArrayBuffer转Base64
+        function arrayBufferToBase64(buffer) {
+            let binary = '';
+            const bytes = new Uint8Array(buffer);
+            const len = bytes.byteLength;
+            for (let i = 0; i < len; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return btoa(binary);
+        }
+
+        // 处理文本
+        function processText() {
+            const input = document.getElementById('inputText').value;
+            let output = '';
+
+            try {
+                switch(currentTool) {
+                    case 'json':
+                        output = formatJSON(input);
+                        break;
+                    case 'list':
+                        output = formatList(input);
+                        break;
+                    case 'compress':
+                        output = compressText(input);
+                        break;
+                    case 'dedupe':
+                        output = dedupeText(input);
+                        break;
+                    case 'sum':
+                        output = sumNumbers(input);
+                        break;
+                }
+            } catch (e) {
+                output = '错误: ' + e.message;
+            }
+
+            document.getElementById('outputText').value = output;
+        }
+
+        // JSON格式化 - 支持标准JSON和Python风格JSON
+        function formatJSON(text) {
+            if (!text.trim()) return '';
+            // 将Python字面量转换为JSON格式
+            let normalized = text.replace(/\bNone\b/g, 'null');
+            normalized = normalized.replace(/\bTrue\b/g, 'true');
+            normalized = normalized.replace(/\bFalse\b/g, 'false');
+
+            // 检测是否包含单引号作为属性名或字符串定界符
+            const hasSingleQuotes = /'[^']*'/.test(normalized);
+
+            if (hasSingleQuotes) {
+                // 如果包含单引号，说明是Python风格，需要转义已有的双引号和反斜杠
+                normalized = normalized.replace(/\\/g, '\\\\');
+                normalized = normalized.replace(/"/g, '\\"');
+                // 将单引号替换为双引号
+                normalized = normalized.replace(/'/g, '"');
+            }
+
+            // 尝试解析JSON
+            let parsed = JSON.parse(normalized);
+            // 格式化输出
+            return JSON.stringify(parsed, null, 2);
+        }
+
+        // List格式化 - 多行文本转列表
+        function formatList(text) {
+            if (!text.trim()) return '';
+            const lines = text.split('\n')
+                .map(line => line.trim())
+                .filter(line => line.length > 0);
+            
+            if (lines.length === 0) return '';
+            
+            return JSON.stringify(lines, null, 2);
+        }
+
+        // 文本压缩 - 支持换行转空格和移除所有空白
+        function compressText(text) {
+            if (!text.trim()) return '';
+            if (compressMode === 'remove') {
+                // 移除所有空格和换行
+                return text.replace(/\s+/g, '');
+            } else {
+                // 换行替换为空格（默认）
+                let result = text.split('\n')
+                    .map(line => line.trim())
+                    .filter(line => line.length > 0)
+                    .join(' ');
+                // 清理 { 后面和 } 前面的多余空格
+                result = result.replace(/\{\s+/g, '{');
+                result = result.replace(/\s+\}/g, '}');
+                return result;
+            }
+        }
+
+        // 文本去重 - 支持按行去重和按空格去重
+        function dedupeText(text) {
+            if (!text.trim()) return '';
+            let items, separator;
+            if (dedupeMode === 'space') {
+                items = text.split(/\s+/).filter(item => item.length > 0);
+                separator = ' ';
+            } else {
+                items = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+                separator = '\n';
+            }
+            const seen = new Set();
+            const unique = [];
+            let dupCount = 0;
+            items.forEach(item => {
+                if (!seen.has(item)) {
+                    seen.add(item);
+                    unique.push(item);
+                } else {
+                    dupCount++;
+                }
+            });
+            let result = unique.join(separator);
+            result += `\n\n--- 去重统计 ---\n原始: ${items.length} 项 | 去重后: ${unique.length} 项 | 重复: ${dupCount} 项`;
+            return result;
+        }
+
+        // 数字求和 - 支持换行和空格分隔的数字
+        function sumNumbers(text) {
+            if (!text.trim()) return '';
+            
+            // 提取所有数字(包括整数和小数)
+            const numbers = text.match(/-?\d+\.?\d*/g);
+            
+            if (!numbers || numbers.length === 0) {
+                return '未找到有效数字';
+            }
+            
+            const nums = numbers.map(n => parseFloat(n));
+            const sum = nums.reduce((acc, val) => acc + val, 0);
+            
+            // 输出详细信息
+            let result = `找到 ${nums.length} 个数字:\n`;
+            result += nums.join(' + ') + '\n';
+            result += `总和 = ${sum}`;
+            
+            return result;
+        }
+
+        // 清空输入
+        function clearInput() {
+            document.getElementById('inputText').value = '';
+        }
+
+        // 清空输出
+        function clearOutput() {
+            document.getElementById('outputText').value = '';
+        }
+
+        // 粘贴
+        async function pasteText() {
+            try {
+                const text = await navigator.clipboard.readText();
+                document.getElementById('inputText').value = text;
+            } catch (e) {
+                alert('无法访问剪贴板，请手动粘贴');
+            }
+        }
+
+        // 复制结果
+        async function copyResult() {
+            const output = document.getElementById('outputText').value;
+            if (!output) {
+                alert('没有可复制的内容');
+                return;
+            }
+            try {
+                await navigator.clipboard.writeText(output);
+                alert('已复制到剪贴板');
+            } catch (e) {
+                // 降级方案
+                document.getElementById('outputText').select();
+                document.execCommand('copy');
+                alert('已复制到剪贴板');
+            }
+        }
+
+        // 快捷键支持
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'Enter') {
+                processText();
+            }
+        });
+    </script>
+</body>
+</html>
