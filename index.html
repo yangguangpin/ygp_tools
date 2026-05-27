@@ -47,6 +47,10 @@
         .download-btn { padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; transition: all 0.2s; }
         .download-btn:hover { background: #218838; }
         .download-btn:disabled { background: #ccc; cursor: not-allowed; }
+        .diff-added { background-color: #d4edda; color: #155724; padding: 2px 4px; border-radius: 3px; }
+        .diff-removed { background-color: #f8d7da; color: #721c24; padding: 2px 4px; border-radius: 3px; text-decoration: line-through; }
+        .diff-unchanged { color: #666; }
+        .diff-line { margin: 2px 0; }
     </style>
 </head>
 <body>
@@ -62,6 +66,7 @@
             <button class="tool-btn" data-tool="dedupe">🔄 文本去重</button>
             <button class="tool-btn" data-tool="sum">🔢 数字求和</button>
             <button class="tool-btn" data-tool="csv2xlsx">📊 CSV转Excel</button>
+            <button class="tool-btn" data-tool="diff">🔍 文本差异对比</button>
         </div>
         <div class="main-content">
             <!-- 通用工具面板 -->
@@ -99,6 +104,38 @@
                     </div>
                 </div>
                 <textarea id="outputText" placeholder="处理结果..." readonly></textarea>
+            </div>
+
+            <!-- 文本差异对比面板 -->
+            <div class="panel" id="diffPanel" style="display:none;">
+                <div class="panel-header">
+                    <div class="panel-title">原文本</div>
+                    <div class="panel-actions">
+                        <button class="btn btn-secondary" onclick="clearDiffInput()">清空</button>
+                    </div>
+                </div>
+                <textarea id="diffOldText" placeholder="请输入原文本..." style="flex:1;"></textarea>
+            </div>
+            <div class="center-btn" id="diffCenter" style="display:none;">
+                <button class="process-btn" onclick="compareText()">对比 →</button>
+            </div>
+            <div class="panel" id="diffRightPanel" style="display:none;">
+                <div class="panel-header">
+                    <div class="panel-title">新文本</div>
+                    <div class="panel-actions">
+                        <button class="btn btn-secondary" onclick="clearDiffNewInput()">清空</button>
+                    </div>
+                </div>
+                <textarea id="diffNewText" placeholder="请输入新文本..." style="flex:1;"></textarea>
+            </div>
+            <div class="panel" id="diffOutput" style="display:none;">
+                <div class="panel-header">
+                    <div class="panel-title">差异结果</div>
+                    <div class="panel-actions">
+                        <button class="btn btn-secondary" onclick="clearDiffOutput()">清空</button>
+                    </div>
+                </div>
+                <div id="diffResult" style="flex:1; overflow:auto; border:2px solid #e0e0e0; border-radius:8px; padding:12px; font-family:'Consolas','Monaco',monospace; font-size:13px; line-height:1.6; background:#fafafa;"></div>
             </div>
 
             <!-- CSV转Excel专用面板 -->
@@ -147,6 +184,7 @@
         let csvFileName = 'output';
         let dedupeMode = 'line'; // 'line' or 'space'
         let compressMode = 'space'; // 'space' or 'remove'
+        let diffResultData = null; // 存储对比结果
 
         // 工具切换
         document.querySelectorAll('.tool-btn').forEach(btn => {
@@ -179,11 +217,16 @@
         // 切换面板显示
         function togglePanels() {
             const isCsv = currentTool === 'csv2xlsx';
+            const isDiff = currentTool === 'diff';
             const isDedupe = currentTool === 'dedupe';
             const isCompress = currentTool === 'compress';
-            document.getElementById('commonPanel').style.display = isCsv ? 'none' : 'flex';
-            document.getElementById('commonCenter').style.display = isCsv ? 'none' : 'flex';
-            document.getElementById('commonOutput').style.display = isCsv ? 'none' : 'flex';
+            document.getElementById('commonPanel').style.display = (isCsv || isDiff) ? 'none' : 'flex';
+            document.getElementById('commonCenter').style.display = (isCsv || isDiff) ? 'none' : 'flex';
+            document.getElementById('commonOutput').style.display = (isCsv || isDiff) ? 'none' : 'flex';
+            document.getElementById('diffPanel').style.display = isDiff ? 'flex' : 'none';
+            document.getElementById('diffCenter').style.display = isDiff ? 'flex' : 'none';
+            document.getElementById('diffRightPanel').style.display = isDiff ? 'flex' : 'none';
+            document.getElementById('diffOutput').style.display = isDiff ? 'flex' : 'none';
             document.getElementById('csvPanel').style.display = isCsv ? 'flex' : 'none';
             document.getElementById('csvCenter').style.display = isCsv ? 'flex' : 'none';
             document.getElementById('csvOutput').style.display = isCsv ? 'flex' : 'none';
@@ -492,9 +535,112 @@
         // 快捷键支持
         document.addEventListener('keydown', function(e) {
             if (e.ctrlKey && e.key === 'Enter') {
-                processText();
+                if (currentTool === 'diff') {
+                    compareText();
+                } else {
+                    processText();
+                }
             }
         });
+
+        // 文本差异对比
+        function compareText() {
+            const oldText = document.getElementById('diffOldText').value;
+            const newText = document.getElementById('diffNewText').value;
+
+            if (!oldText.trim() && !newText.trim()) {
+                document.getElementById('diffResult').innerHTML = '<div style="color:#888;text-align:center;padding:20px;">请输入原文本和新文本</div>';
+                return;
+            }
+
+            const oldLines = oldText.split('\n');
+            const newLines = newText.split('\n');
+
+            // 使用LCS算法计算差异
+            const diff = computeDiff(oldLines, newLines);
+            const html = renderDiff(diff);
+
+            document.getElementById('diffResult').innerHTML = html;
+        }
+
+        // 计算LCS差异
+        function computeDiff(oldLines, newLines) {
+            const m = oldLines.length;
+            const n = newLines.length;
+
+            // 构建DP表
+            const dp = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+            for (let i = 1; i <= m; i++) {
+                for (let j = 1; j <= n; j++) {
+                    if (oldLines[i - 1] === newLines[j - 1]) {
+                        dp[i][j] = dp[i - 1][j - 1] + 1;
+                    } else {
+                        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+                    }
+                }
+            }
+
+            // 回溯找出差异
+            const result = [];
+            let i = m, j = n;
+            while (i > 0 || j > 0) {
+                if (i > 0 && j > 0 && oldLines[i - 1] === newLines[j - 1]) {
+                    result.unshift({ type: 'unchanged', line: oldLines[i - 1] });
+                    i--;
+                    j--;
+                } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+                    result.unshift({ type: 'added', line: newLines[j - 1] });
+                    j--;
+                } else if (i > 0) {
+                    result.unshift({ type: 'removed', line: oldLines[i - 1] });
+                    i--;
+                }
+            }
+
+            return result;
+        }
+
+        // 渲染差异结果
+        function renderDiff(diff) {
+            let html = '';
+            let lineNum = 1;
+
+            diff.forEach(item => {
+                const lineContent = escapeHtml(item.line) || '&nbsp;';
+                if (item.type === 'added') {
+                    html += `<div class="diff-line diff-added">+ ${lineContent}</div>`;
+                } else if (item.type === 'removed') {
+                    html += `<div class="diff-line diff-removed">- ${lineContent}</div>`;
+                } else {
+                    html += `<div class="diff-line diff-unchanged">${lineNum} | ${lineContent}</div>`;
+                    lineNum++;
+                }
+            });
+
+            return html;
+        }
+
+        // HTML转义
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 清空差异输入
+        function clearDiffInput() {
+            document.getElementById('diffOldText').value = '';
+        }
+
+        // 清空差异新输入
+        function clearDiffNewInput() {
+            document.getElementById('diffNewText').value = '';
+        }
+
+        // 清空差异输出
+        function clearDiffOutput() {
+            document.getElementById('diffResult').innerHTML = '';
+        }
     </script>
 </body>
 </html>
