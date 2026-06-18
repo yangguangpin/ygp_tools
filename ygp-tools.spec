@@ -1,12 +1,23 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import os
+import sys
+
 block_cipher = None
+
+# 打包时包含 lib 目录下的本地 JS 库（如果存在）
+lib_datas = []
+lib_path = os.path.join(os.getcwd(), 'lib')
+if os.path.isdir(lib_path):
+    for fname in os.listdir(lib_path):
+        if fname.endswith('.js'):
+            lib_datas.append((os.path.join(lib_path, fname), 'lib'))
 
 a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[('index.html', '.')],
+    datas=[('index.html', '.')] + lib_datas,
     hiddenimports=['webview'],
     hookspath=[],
     hooksconfig={},

@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YGP工具箱</title>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sql-formatter@12.2.0/dist/sql-formatter.min.js"></script>
+    <!-- 极早期 splash：在 CSS 加载前立即显示渐变背景，彻底消灭白屏 -->
+    <script>document.documentElement.style.cssText = 'height:100%;background:linear-gradient(135deg,#667eea,#764ba2)';</script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); height: 100vh; display: flex; flex-direction: column; }
@@ -52,9 +52,48 @@
         .diff-removed { background-color: #f8d7da; color: #721c24; padding: 2px 4px; border-radius: 3px; text-decoration: line-through; }
         .diff-unchanged { color: #666; }
         .diff-line { margin: 2px 0; }
+
+        /* 启动加载覆盖层 */
+        #splash-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            z-index: 9999; transition: opacity 0.5s ease;
+        }
+        #splash-overlay.fade-out { opacity: 0; pointer-events: none; }
+        #splash-overlay .splash-title {
+            font-size: 28px; font-weight: bold; color: white; margin-bottom: 20px;
+        }
+        #splash-overlay .splash-sub {
+            font-size: 14px; color: rgba(255,255,255,0.7); margin-bottom: 30px;
+        }
+        .splash-spinner {
+            width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.2);
+            border-top-color: white; border-radius: 50%;
+            animation: splash-spin 0.8s linear infinite;
+        }
+        @keyframes splash-spin { to { transform: rotate(360deg); } }
+        .splash-progress-track {
+            width: 280px; height: 4px; background: rgba(255,255,255,0.2);
+            border-radius: 2px; margin-top: 20px; overflow: hidden;
+        }
+        .splash-progress-bar {
+            height: 100%; width: 0%; background: white;
+            border-radius: 2px; transition: width 0.3s ease;
+        }
     </style>
 </head>
 <body>
+    <!-- 启动加载覆盖层 -->
+    <div id="splash-overlay">
+        <div class="splash-title">🛠️ YGP工具箱</div>
+        <div class="splash-sub">正在加载资源...</div>
+        <div class="splash-spinner"></div>
+        <div class="splash-progress-track">
+            <div class="splash-progress-bar" id="splash-progress-bar"></div>
+        </div>
+    </div>
     <div class="header">
         <h1>🛠️ YGP工具箱</h1>
     </div>
@@ -69,6 +108,7 @@
             <button class="tool-btn" data-tool="csv2xlsx">📊 CSV转Excel</button>
             <button class="tool-btn" data-tool="diff">🔍 文本差异对比</button>
             <button class="tool-btn" data-tool="sql">🗃️ SQL格式化</button>
+            <button class="tool-btn" data-tool="kv2dict">📖 键值对转字典</button>
         </div>
         <div class="main-content">
             <!-- 通用工具面板 -->
@@ -90,6 +130,7 @@
                     <div class="input-mode-tabs">
                         <button class="mode-tab active" data-mode="space">换行转空格</button>
                         <button class="mode-tab" data-mode="remove">移除所有空白</button>
+                        <button class="mode-tab" data-mode="newline">换行压缩</button>
                     </div>
                 </div>
                 <textarea id="inputText" placeholder="请输入文本..."></textarea>
@@ -180,6 +221,70 @@
     </div>
 
     <script>
+        // ======= 启动加载管理 =======
+        var _loadedCount = 0;
+        var _totalScripts = 2;
+        var _libsReady = false;
+        function markScriptLoaded() {
+            _loadedCount++;
+            var pct = Math.min(90, Math.round((_loadedCount / _totalScripts) * 90));
+            var bar = document.getElementById('splash-progress-bar');
+            if (bar) bar.style.width = pct + '%';
+            if (_loadedCount >= _totalScripts) {
+                _libsReady = true;
+                setTimeout(function() {
+                    var bar2 = document.getElementById('splash-progress-bar');
+                    if (bar2) bar2.style.width = '100%';
+                    setTimeout(function() {
+                        var overlay = document.getElementById('splash-overlay');
+                        if (overlay) {
+                            overlay.classList.add('fade-out');
+                            setTimeout(function() { overlay.style.display = 'none'; }, 500);
+                        }
+                    }, 200);
+                }, 300);
+            }
+        }
+        // 紧急后备：8秒后强制关闭加载层
+        setTimeout(function() {
+            var overlay = document.getElementById('splash-overlay');
+            if (overlay && window.getComputedStyle(overlay).display !== 'none') {
+                overlay.classList.add('fade-out');
+                setTimeout(function() { overlay.style.display = 'none'; }, 500);
+            }
+        }, 8000);
+
+        // 动态加载两个大库，不阻塞主线程
+        function _loadLib(src, callback) {
+            var s = document.createElement('script');
+            s.src = src;
+            s.async = true;
+            s.onload = callback;
+            s.onerror = function() {
+                // 本地加载失败，降级到CDN
+                var cdnSrc = '';
+                if (src.indexOf('xlsx') > -1) {
+                    cdnSrc = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+                } else if (src.indexOf('sql-formatter') > -1) {
+                    cdnSrc = 'https://cdn.jsdelivr.net/npm/sql-formatter@12.2.0/dist/sql-formatter.min.js';
+                }
+                if (cdnSrc) {
+                    var s2 = document.createElement('script');
+                    s2.src = cdnSrc;
+                    s2.async = true;
+                    s2.onload = callback;
+                    document.body.appendChild(s2);
+                }
+            };
+            document.body.appendChild(s);
+        }
+        // 先让页面事件绑定完成，再延迟加载库
+        setTimeout(function() {
+            _loadLib('lib/xlsx.full.min.js', markScriptLoaded);
+            _loadLib('lib/sql-formatter.min.js', markScriptLoaded);
+        }, 100);
+
+        // ======= App 逻辑 =======
         let currentTool = 'json';
         let csvMode = 'file'; // 'file' or 'text'
         let csvWorkbook = null;
@@ -386,6 +491,9 @@
                     case 'sql':
                         output = formatSQL(input);
                         break;
+                    case 'kv2dict':
+                        output = formatKeyValue2Dict(input);
+                        break;
                 }
             } catch (e) {
                 output = '错误: ' + e.message;
@@ -452,12 +560,17 @@
             return JSON.stringify(lines, null, 2);
         }
 
-        // 文本压缩 - 支持换行转空格和移除所有空白
+        // 文本压缩 - 支持换行转空格、移除所有空白和移除空白行
         function compressText(text) {
             if (!text.trim()) return '';
             if (compressMode === 'remove') {
                 // 移除所有空格和换行
                 return text.replace(/\s+/g, '');
+            } else if (compressMode === 'newline') {
+                // 移除空白行，保留内容行间的单个换行
+                return text.split('\n')
+                    .filter(line => line.trim().length > 0)
+                    .join('\n');
             } else {
                 // 换行替换为空格（默认）
                 let result = text.split('\n')
@@ -535,6 +648,44 @@
             } catch (e) {
                 return 'SQL格式化错误: ' + e.message;
             }
+        }
+
+        // 键值对转字典 - 将键值对文本转换为Python字典格式
+        function formatKeyValue2Dict(text) {
+            if (!text.trim()) return '';
+            
+            const lines = text.split('\n')
+                .map(line => line.trim())
+                .filter(line => line.length > 0);
+            
+            if (lines.length === 0) return '';
+            
+            const entries = [];
+            let errorCount = 0;
+            
+            lines.forEach((line, idx) => {
+                // 支持tab分隔或多个空格分隔
+                const parts = line.split(/\t+|\s{2,}/);
+                if (parts.length >= 2) {
+                    const key = parts[0].trim();
+                    const value = parts.slice(1).join(' ').trim();
+                    entries.push(`"${key}":"${value}"`);
+                } else {
+                    errorCount++;
+                }
+            });
+            
+            if (entries.length === 0) {
+                return '错误: 未找到有效的键值对，请确保每行包含用Tab或多个空格分隔的键和值';
+            }
+            
+            let result = '{' + entries.join(',') + '}';
+            
+            if (errorCount > 0) {
+                result += `\n\n⚠ 警告: ${errorCount} 行未能识别为有效键值对`;
+            }
+            
+            return result;
         }
 
         // 清空输入
