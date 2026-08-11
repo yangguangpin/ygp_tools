@@ -52,6 +52,41 @@
         .diff-removed { background-color: #f8d7da; color: #721c24; padding: 2px 4px; border-radius: 3px; text-decoration: line-through; }
         .diff-unchanged { color: #666; }
         .diff-line { margin: 2px 0; }
+        .dup-highlight { background-color: #fff3cd; color: #856404; padding: 2px 4px; border-radius: 3px; font-weight: 600; }
+
+        /* 账单计算器样式 */
+        .bill-section { margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; }
+        .bill-section h2 { color: #555; margin-bottom: 12px; font-size: 16px; border-left: 4px solid #667eea; padding-left: 10px; }
+        .bill-file-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .bill-btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.3s; }
+        .bill-btn-primary { background: #667eea; color: white; }
+        .bill-btn-primary:hover { background: #5568d3; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); }
+        .bill-btn-success { background: #48bb78; color: white; }
+        .bill-btn-success:hover { background: #38a169; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(72, 187, 120, 0.4); }
+        .bill-btn-warning { background: #ed8936; color: white; }
+        .bill-btn-warning:hover { background: #dd6b20; }
+        .bill-price-config { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin-top: 12px; }
+        .bill-price-item { background: white; padding: 12px; border-radius: 6px; border: 2px solid #e2e8f0; }
+        .bill-price-item h3 { color: #667eea; margin-bottom: 8px; font-size: 14px; }
+        .bill-price-input-group { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+        .bill-price-input-group label { min-width: 70px; color: #555; font-size: 13px; }
+        .bill-price-input-group input { flex: 1; padding: 6px; border: 1px solid #cbd5e0; border-radius: 4px; font-size: 13px; }
+        .bill-price-input-group input:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+        .bill-table { width: 100%; border-collapse: collapse; margin-top: 12px; background: white; border-radius: 6px; overflow: hidden; }
+        .bill-table th, .bill-table td { padding: 10px; text-align: left; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
+        .bill-table th { background: #667eea; color: white; font-weight: 600; position: sticky; top: 0; }
+        .bill-table tr:hover { background: #f7fafc; }
+        .bill-summary-row { background: #fef3c7 !important; font-weight: bold; }
+        .bill-total-row { background: #667eea !important; color: white; font-weight: bold; }
+        .bill-table-container { max-height: 400px; overflow-y: auto; margin-top: 12px; }
+        .bill-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 12px; }
+        .bill-stat-card { background: white; padding: 15px; border-radius: 8px; text-align: center; border-left: 4px solid #667eea; }
+        .bill-stat-card h3 { color: #718096; font-size: 13px; margin-bottom: 6px; }
+        .bill-stat-card .value { color: #667eea; font-size: 20px; font-weight: bold; }
+        .bill-message { padding: 10px; border-radius: 6px; margin-top: 8px; }
+        .bill-message.success { background: #c6f6d5; color: #22543d; border: 1px solid #9ae6b4; }
+        .bill-message.error { background: #fed7d7; color: #742a2a; border: 1px solid #fc8181; }
+        .bill-hidden { display: none; }
 
         /* 启动加载覆盖层 */
         #splash-overlay {
@@ -109,6 +144,8 @@
             <button class="tool-btn" data-tool="diff">🔍 文本差异对比</button>
             <button class="tool-btn" data-tool="sql">🗃️ SQL格式化</button>
             <button class="tool-btn" data-tool="kv2dict">📖 键值对转字典</button>
+            <button class="tool-btn" data-tool="finddup">🔎 重复查找</button>
+            <button class="tool-btn" data-tool="billcalc">📊 账单费用计算器</button>
         </div>
         <div class="main-content">
             <!-- 通用工具面板 -->
@@ -181,6 +218,38 @@
                 <div id="diffResult" style="flex:1; overflow:auto; border:2px solid #e0e0e0; border-radius:8px; padding:12px; font-family:'Consolas','Monaco',monospace; font-size:13px; line-height:1.6; background:#fafafa;"></div>
             </div>
 
+            <!-- 重复查找面板 -->
+            <div class="panel" id="finddupPanel" style="display:none;">
+                <div class="panel-header">
+                    <div class="panel-title">文本A</div>
+                    <div class="panel-actions">
+                        <button class="btn btn-secondary" onclick="clearFinddupA()">清空</button>
+                    </div>
+                </div>
+                <textarea id="finddupTextA" placeholder="请输入文本A..." style="flex:1;"></textarea>
+            </div>
+            <div class="panel" id="finddupRightPanel" style="display:none;">
+                <div class="panel-header">
+                    <div class="panel-title">文本B</div>
+                    <div class="panel-actions">
+                        <button class="btn btn-secondary" onclick="clearFinddupB()">清空</button>
+                    </div>
+                </div>
+                <textarea id="finddupTextB" placeholder="请输入文本B..." style="flex:1;"></textarea>
+            </div>
+            <div class="center-btn" id="finddupCenter" style="display:none;">
+                <button class="process-btn" onclick="findDuplicates()">查找 →</button>
+            </div>
+            <div class="panel" id="finddupOutput" style="display:none;">
+                <div class="panel-header">
+                    <div class="panel-title">重复结果</div>
+                    <div class="panel-actions">
+                        <button class="btn btn-secondary" onclick="clearFinddupOutput()">清空</button>
+                    </div>
+                </div>
+                <div id="finddupResult" style="flex:1; overflow:auto; border:2px solid #e0e0e0; border-radius:8px; padding:12px; font-family:'Consolas','Monaco',monospace; font-size:13px; line-height:1.6; background:#fafafa;"></div>
+            </div>
+
             <!-- CSV转Excel专用面板 -->
             <div class="panel" id="csvPanel" style="display:none;">
                 <div class="panel-header">
@@ -216,6 +285,83 @@
                     </div>
                 </div>
                 <textarea id="csvOutputText" placeholder="转换预览..." readonly style="flex:1;"></textarea>
+            </div>
+
+            <!-- 账单费用计算器面板 -->
+            <div class="panel" id="billPanel" style="display:none; overflow-y:auto;">
+                <!-- 文件导入导出 -->
+                <div class="bill-section">
+                    <h2>📁 文件操作</h2>
+                    <div class="bill-file-controls">
+                        <label class="bill-btn bill-btn-primary">
+                            导入账单文件
+                            <input type="file" id="billFile" accept=".xlsx,.xls,.csv" style="display:none;">
+                        </label>
+                        <label class="bill-btn bill-btn-warning">
+                            导入单价配置
+                            <input type="file" id="configFile" accept=".json" style="display:none;">
+                        </label>
+                        <button class="bill-btn bill-btn-success" id="billExportBtn" disabled>导出计算结果</button>
+                        <button class="bill-btn bill-btn-warning" id="billResetBtn">重置</button>
+                    </div>
+                    <div id="billFileMessage"></div>
+                </div>
+
+                <!-- 模型单价配置 -->
+                <div class="bill-section">
+                    <h2>⚙️ 模型单价配置（单位：元/百万token）</h2>
+                    <div class="bill-price-config" id="billPriceConfig"></div>
+                    <button class="bill-btn bill-btn-primary" id="billSaveConfigBtn" style="margin-top: 12px;">保存配置为JSON</button>
+                </div>
+
+                <!-- 数据统计 -->
+                <div class="bill-section bill-hidden" id="billStatsSection">
+                    <h2>📈 统计概览</h2>
+                    <div class="bill-stats" id="billStatsContainer"></div>
+                </div>
+
+                <!-- 详细计算结果 -->
+                <div class="bill-section bill-hidden" id="billDetailSection">
+                    <h2>📋 详细计算结果（按月份、应用、模型）</h2>
+                    <div class="bill-table-container">
+                        <table class="bill-table" id="billDetailTable">
+                            <thead>
+                                <tr>
+                                    <th>月份</th>
+                                    <th>应用</th>
+                                    <th>模型</th>
+                                    <th>缓存Token</th>
+                                    <th>输入Token</th>
+                                    <th>输出Token</th>
+                                    <th>小计（元）</th>
+                                </tr>
+                            </thead>
+                            <tbody id="billDetailBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 汇总结果 -->
+                <div class="bill-section bill-hidden" id="billSummarySection">
+                    <h2>💰 汇总结果（按月份、应用）</h2>
+                    <div class="bill-table-container">
+                        <table class="bill-table" id="billSummaryTable">
+                            <thead>
+                                <tr>
+                                    <th>业务领域</th>
+                                    <th>订阅名称</th>
+                                    <th>费用（人民币）</th>
+                                    <th>南天门账单费用（人民币）</th>
+                                    <th>总费用</th>
+                                    <th>对接人</th>
+                                    <th>确认无误</th>
+                                    <th>部门</th>
+                                </tr>
+                            </thead>
+                            <tbody id="billSummaryBody"></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -288,6 +434,7 @@
         let currentTool = 'json';
         let csvMode = 'file'; // 'file' or 'text'
         let csvWorkbook = null;
+        let csvXlsxBase64 = null; // Python 转换后的 base64 缓存
         let csvFileName = 'output';
         let dedupeMode = 'line'; // 'line' or 'space'
         let compressMode = 'space'; // 'space' or 'remove'
@@ -327,9 +474,11 @@
             const isDiff = currentTool === 'diff';
             const isDedupe = currentTool === 'dedupe';
             const isCompress = currentTool === 'compress';
-            document.getElementById('commonPanel').style.display = (isCsv || isDiff) ? 'none' : 'flex';
-            document.getElementById('commonCenter').style.display = (isCsv || isDiff) ? 'none' : 'flex';
-            document.getElementById('commonOutput').style.display = (isCsv || isDiff) ? 'none' : 'flex';
+            const isFinddup = currentTool === 'finddup';
+            const isBill = currentTool === 'billcalc';
+            document.getElementById('commonPanel').style.display = (isCsv || isDiff || isFinddup || isBill) ? 'none' : 'flex';
+            document.getElementById('commonCenter').style.display = (isCsv || isDiff || isFinddup || isBill) ? 'none' : 'flex';
+            document.getElementById('commonOutput').style.display = (isCsv || isDiff || isFinddup || isBill) ? 'none' : 'flex';
             document.getElementById('diffPanel').style.display = isDiff ? 'flex' : 'none';
             document.getElementById('diffCenter').style.display = isDiff ? 'flex' : 'none';
             document.getElementById('diffRightPanel').style.display = isDiff ? 'flex' : 'none';
@@ -337,6 +486,11 @@
             document.getElementById('csvPanel').style.display = isCsv ? 'flex' : 'none';
             document.getElementById('csvCenter').style.display = isCsv ? 'flex' : 'none';
             document.getElementById('csvOutput').style.display = isCsv ? 'flex' : 'none';
+            document.getElementById('finddupPanel').style.display = isFinddup ? 'flex' : 'none';
+            document.getElementById('finddupCenter').style.display = isFinddup ? 'flex' : 'none';
+            document.getElementById('finddupRightPanel').style.display = isFinddup ? 'flex' : 'none';
+            document.getElementById('finddupOutput').style.display = isFinddup ? 'flex' : 'none';
+            document.getElementById('billPanel').style.display = isBill ? 'flex' : 'none';
             document.getElementById('dedupeModeTabs').style.display = isDedupe ? 'block' : 'none';
             document.getElementById('compressModeTabs').style.display = isCompress ? 'block' : 'none';
         }
@@ -393,61 +547,202 @@
                     return;
                 }
 
-                // 解析CSV
-                const workbook = XLSX.read(csvText, { type: 'string' });
-                csvWorkbook = workbook;
-
-                // 预览内容
-                const sheetName = workbook.SheetNames[0];
-                const sheet = workbook.Sheets[sheetName];
-                const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-
-                let preview = `工作表: ${sheetName}\n`;
-                preview += `行数: ${jsonData.length}\n\n`;
-                preview += '--- 数据预览 ---\n';
-                const maxPreview = Math.min(jsonData.length, 50);
-                for (let i = 0; i < maxPreview; i++) {
-                    preview += (i + 1) + '| ' + (jsonData[i] || []).join('\t') + '\n';
+                // 有 pywebview 时使用 Python pandas 转换（日期处理更可靠）
+                if (window.pywebview) {
+                    window.pywebview.api.convert_csv_to_xlsx(csvText).then(function(result) {
+                        if (result.success) {
+                            csvXlsxBase64 = result.xlsx_base64;
+                            csvWorkbook = null;
+                            csvFileName = (result.filename || 'output').replace(/\.xlsx$/i, '');
+                            document.getElementById('csvOutputText').value = result.preview;
+                            document.getElementById('downloadXlsxBtn').disabled = false;
+                        } else {
+                            document.getElementById('csvOutputText').value = '转换失败: ' + (result.message || '未知错误');
+                        }
+                    }).catch(function(err) {
+                        document.getElementById('csvOutputText').value = 'Python转换失败: ' + err.message + '\n\n尝试前端降级方案...';
+                        convertWithSheetJS(csvText);
+                    });
+                } else {
+                    convertWithSheetJS(csvText);
                 }
-                if (jsonData.length > 50) {
-                    preview += `... 共 ${jsonData.length} 行，仅预览前50行\n`;
-                }
-                preview += `\n✅ 转换成功！点击"下载XLSX"按钮保存文件`;
-
-                document.getElementById('csvOutputText').value = preview;
-                document.getElementById('downloadXlsxBtn').disabled = false;
             } catch (e) {
                 document.getElementById('csvOutputText').value = '错误: ' + e.message;
             }
         }
 
+        // 使用 SheetJS 前端转换（降级方案，非 pywebview 环境使用）
+        function convertWithSheetJS(csvText) {
+            // 使用 cellDates: true 让 SheetJS 自动将日期字符串转为 Date 对象
+            var workbook = XLSX.read(csvText, { type: 'string', cellDates: true });
+            var sheetName = workbook.SheetNames[0];
+            var sheet = workbook.Sheets[sheetName];
+            var jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+            // 检测日期列并设置格式
+            var colCount = jsonData[0] ? jsonData[0].length : 0;
+            var dateColFormats = {};
+            for (var col = 0; col < colCount; col++) {
+                var dateCount = 0, total = 0, hasTime = false;
+                var sample = Math.min(20, jsonData.length - 1);
+                for (var row = 1; row <= sample; row++) {
+                    var val = jsonData[row] && jsonData[row][col];
+                    if (val === undefined || val === null || val === '') continue;
+                    total++;
+                    if (val instanceof Date) {
+                        dateCount++;
+                        if (val.getHours() || val.getMinutes() || val.getSeconds()) hasTime = true;
+                    } else if (typeof val === 'string') {
+                        var trimmed = val.trim();
+                        if (/^\d{4}[-\/]\d{2}[-\/]\d{2}/.test(trimmed)) {
+                            dateCount++;
+                            if (/\d{2}:\d{2}/.test(trimmed)) hasTime = true;
+                        }
+                    }
+                }
+                if (total > 0 && dateCount / total >= 0.6) {
+                    dateColFormats[col] = hasTime ? 'yyyy-mm-dd hh:mm:ss' : 'yyyy-mm-dd';
+                }
+            }
+
+            // 重写工作表，为日期单元格设置格式
+            if (Object.keys(dateColFormats).length > 0) {
+                var newSheet = {};
+                var range = { s: { r: 0, c: 0 }, e: { r: jsonData.length - 1, c: colCount - 1 } };
+                newSheet['!ref'] = XLSX.utils.encode_range(range);
+                if (sheet['!cols']) newSheet['!cols'] = sheet['!cols'];
+
+                for (var r = 0; r < jsonData.length; r++) {
+                    var row = jsonData[r] || [];
+                    for (var c = 0; c < colCount; c++) {
+                        var addr = XLSX.utils.encode_cell({ r: r, c: c });
+                        var val = row[c];
+
+                        if (dateColFormats[c] && r > 0 && val !== '' && val !== undefined && val !== null) {
+                            var dateVal = null;
+                            if (val instanceof Date) {
+                                dateVal = val;
+                            } else if (typeof val === 'string') {
+                                // 解析字符串日期
+                                var s = val.trim().replace(/-/g, '/');
+                                var d = new Date(s);
+                                if (!isNaN(d.getTime())) dateVal = d;
+                            }
+                            if (dateVal) {
+                                newSheet[addr] = {
+                                    t: 'd',
+                                    v: dateVal,
+                                    z: dateColFormats[c]
+                                };
+                                continue;
+                            }
+                        }
+
+                        // 其他单元格
+                        if (typeof val === 'number') {
+                            newSheet[addr] = { t: 'n', v: val };
+                        } else if (val !== undefined && val !== null) {
+                            newSheet[addr] = { t: 's', v: String(val) };
+                        }
+                    }
+                }
+                workbook.Sheets[sheetName] = newSheet;
+            }
+
+            var preview = '工作表: ' + sheetName + '\n';
+            preview += '行数: ' + (jsonData.length - 1) + '\n\n';
+            preview += '--- 数据预览 ---\n';
+            var maxPreview = Math.min(jsonData.length - 1, 50);
+            for (var i = 1; i <= maxPreview; i++) {
+                var row = jsonData[i] || [];
+                var parts = [];
+                for (var c = 0; c < colCount; c++) {
+                    var v = row[c];
+                    if (v instanceof Date) {
+                        var fmt = dateColFormats[c] || '';
+                        var y = v.getFullYear();
+                        var M = String(v.getMonth() + 1).padStart(2, '0');
+                        var d = String(v.getDate()).padStart(2, '0');
+                        if (fmt.indexOf('hh') >= 0) {
+                            var h = String(v.getHours()).padStart(2, '0');
+                            var m = String(v.getMinutes()).padStart(2, '0');
+                            var s = String(v.getSeconds()).padStart(2, '0');
+                            parts.push(y + '-' + M + '-' + d + ' ' + h + ':' + m + ':' + s);
+                        } else {
+                            parts.push(y + '-' + M + '-' + d);
+                        }
+                    } else {
+                        parts.push(v === undefined || v === null ? '' : String(v));
+                    }
+                }
+                preview += i + '| ' + parts.join('\t') + '\n';
+            }
+            if (jsonData.length - 1 > 50) {
+                preview += '... 共 ' + (jsonData.length - 1) + ' 行，仅预览前50行\n';
+            }
+            preview += '\n✅ 转换成功！点击"下载XLSX"按钮保存文件';
+
+            csvWorkbook = workbook;
+            csvXlsxBase64 = null;
+            document.getElementById('csvOutputText').value = preview;
+            document.getElementById('downloadXlsxBtn').disabled = false;
+        }
+
         // 下载XLSX
         function downloadXlsx() {
-            if (!csvWorkbook) return;
-
             try {
-                // 生成XLSX文件内容
-                const xlsxData = XLSX.write(csvWorkbook, { bookType: 'xlsx', type: 'array' });
-                // 转换为base64
-                const base64Content = arrayBufferToBase64(xlsxData);
+                // 优先使用 Python pandas 转换的结果
+                if (csvXlsxBase64) {
+                    if (window.pywebview) {
+                        window.pywebview.api.save_xlsx_file({
+                            filename: csvFileName + '.xlsx',
+                            content: csvXlsxBase64
+                        }).then(function(result) {
+                            if (result.success) {
+                                alert('文件保存成功: ' + result.path);
+                            } else {
+                                alert(result.message || '保存失败');
+                            }
+                        }).catch(function(err) {
+                            alert('保存失败: ' + err.message);
+                        });
+                    } else {
+                        // 浏览器环境：base64 → Blob → 下载
+                        var byteChars = atob(csvXlsxBase64);
+                        var byteNums = new Uint8Array(byteChars.length);
+                        for (var i = 0; i < byteChars.length; i++) {
+                            byteNums[i] = byteChars.charCodeAt(i);
+                        }
+                        var blob = new Blob([byteNums], {
+                            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                        });
+                        var link = document.createElement('a');
+                        link.href = URL.createObjectURL(blob);
+                        link.download = csvFileName + '.xlsx';
+                        link.click();
+                    }
+                    return;
+                }
 
-                // 检测是否在pywebview环境中
+                // 降级：SheetJS 转换
+                if (!csvWorkbook) return;
+                var xlsxData = XLSX.write(csvWorkbook, { bookType: 'xlsx', type: 'array' });
+                var base64Content = arrayBufferToBase64(xlsxData);
+
                 if (window.pywebview) {
-                    // 使用pywebview API保存文件
                     window.pywebview.api.save_xlsx_file({
                         filename: csvFileName + '.xlsx',
                         content: base64Content
-                    }).then(result => {
+                    }).then(function(result) {
                         if (result.success) {
                             alert('文件保存成功: ' + result.path);
                         } else {
                             alert(result.message || '保存失败');
                         }
-                    }).catch(err => {
+                    }).catch(function(err) {
                         alert('保存失败: ' + err.message);
                     });
                 } else {
-                    // 浏览器环境，使用原生的XLSX.writeFile
                     XLSX.writeFile(csvWorkbook, csvFileName + '.xlsx');
                 }
             } catch (e) {
@@ -731,6 +1026,8 @@
             if (e.ctrlKey && e.key === 'Enter') {
                 if (currentTool === 'diff') {
                     compareText();
+                } else if (currentTool === 'finddup') {
+                    findDuplicates();
                 } else {
                     processText();
                 }
@@ -835,6 +1132,537 @@
         function clearDiffOutput() {
             document.getElementById('diffResult').innerHTML = '';
         }
+
+        // 重复查找
+        function findDuplicates() {
+            const textA = document.getElementById('finddupTextA').value;
+            const textB = document.getElementById('finddupTextB').value;
+
+            if (!textA.trim() && !textB.trim()) {
+                document.getElementById('finddupResult').innerHTML = '<div style="color:#888;text-align:center;padding:20px;">请输入文本A和文本B</div>';
+                return;
+            }
+
+            // 按空格或换行分割成字段
+            const fieldsA = textA.split(/[\s\n]+/).filter(f => f.length > 0);
+            const fieldsB = textB.split(/[\s\n]+/).filter(f => f.length > 0);
+
+            // 构建文本B的字段集合（用于快速查找）
+            const setB = new Set(fieldsB);
+
+            // 渲染文本A，高亮在B中也存在的字段
+            let html = '<div style="margin-bottom:16px;">';
+            html += '<div style="font-weight:600;color:#333;margin-bottom:8px;">📄 文本A（高亮显示在文本B中也存在的字段）：</div>';
+            html += '<div style="background:#fff;border:1px solid #e0e0e0;border-radius:6px;padding:10px;line-height:2;">';
+            let dupCountA = 0;
+            fieldsA.forEach((field, idx) => {
+                const isDup = setB.has(field);
+                if (isDup) dupCountA++;
+                const fieldContent = escapeHtml(field);
+                const cls = isDup ? 'dup-highlight' : '';
+                html += `<span class="${cls}" style="margin:2px 4px;padding:2px 6px;display:inline-block;">${fieldContent}</span>`;
+            });
+            html += '</div>';
+            html += `<div style="font-size:12px;color:#666;margin-top:6px;">共 ${dupCountA} 个字段在文本B中也存在</div>`;
+            html += '</div>';
+
+            // 构建文本A的字段集合
+            const setA = new Set(fieldsA);
+
+            // 渲染文本B，高亮在A中也存在的字段
+            html += '<div style="margin-top:16px;">';
+            html += '<div style="font-weight:600;color:#333;margin-bottom:8px;">📄 文本B（高亮显示在文本A中也存在的字段）：</div>';
+            html += '<div style="background:#fff;border:1px solid #e0e0e0;border-radius:6px;padding:10px;line-height:2;">';
+            let dupCountB = 0;
+            fieldsB.forEach((field, idx) => {
+                const isDup = setA.has(field);
+                if (isDup) dupCountB++;
+                const fieldContent = escapeHtml(field);
+                const cls = isDup ? 'dup-highlight' : '';
+                html += `<span class="${cls}" style="margin:2px 4px;padding:2px 6px;display:inline-block;">${fieldContent}</span>`;
+            });
+            html += '</div>';
+            html += `<div style="font-size:12px;color:#666;margin-top:6px;">共 ${dupCountB} 个字段在文本A中也存在</div>`;
+            html += '</div>';
+
+            // 统计信息
+            const commonFields = [...setA].filter(f => setB.has(f));
+            html += `<div style="margin-top:16px;padding:12px;background:#f0f2ff;border-radius:6px;font-size:13px;">`;
+            html += `<div style="font-weight:600;margin-bottom:6px;">📊 统计信息</div>`;
+            html += `<div>文本A字段数: ${fieldsA.length}</div>`;
+            html += `<div>文本B字段数: ${fieldsB.length}</div>`;
+            html += `<div>重复字段数: ${commonFields.length}</div>`;
+            if (commonFields.length > 0 && commonFields.length <= 100) {
+                html += `<div style="margin-top:6px;">重复字段列表:</div>`;
+                html += `<div style="background:#fff;padding:8px;border-radius:4px;margin-top:4px;max-height:200px;overflow:auto;line-height:1.8;">`;
+                html += commonFields.map(f => `<span class="dup-highlight" style="margin:2px 4px;padding:2px 6px;display:inline-block;">${escapeHtml(f)}</span>`).join('');
+                html += `</div>`;
+            } else if (commonFields.length > 100) {
+                html += `<div style="margin-top:6px;">重复字段过多，仅显示前100个:</div>`;
+                html += `<div style="background:#fff;padding:8px;border-radius:4px;margin-top:4px;max-height:200px;overflow:auto;line-height:1.8;">`;
+                html += commonFields.slice(0, 100).map(f => `<span class="dup-highlight" style="margin:2px 4px;padding:2px 6px;display:inline-block;">${escapeHtml(f)}</span>`).join('');
+                html += `</div>`;
+            }
+            html += `</div>`;
+
+            document.getElementById('finddupResult').innerHTML = html;
+        }
+
+        // 清空重复查找输入A
+        function clearFinddupA() {
+            document.getElementById('finddupTextA').value = '';
+        }
+
+        // 清空重复查找输入B
+        function clearFinddupB() {
+            document.getElementById('finddupTextB').value = '';
+        }
+
+        // 清空重复查找输出
+        function clearFinddupOutput() {
+            document.getElementById('finddupResult').innerHTML = '';
+        }
+
+        // ======= 账单费用计算器 =======
+        let billData = [];
+        let billPriceConfig = {};
+        let billCalculatedData = [];
+        let billSummaryData = [];
+
+        const billDefaultPrices = {
+            'GPT-4-1': { input: 15, output: 60, cache: 3 },
+            'GPT-5': { input: 10, output: 40, cache: 2 }
+        };
+
+        const billAppConfig = {
+            '22b019029be44418be93c716c3b6e8f6': { name: '战略与用户-消费者洞察中心', contact: '郭建军（00011382）' },
+            'f44b6bcc0ca843d7a2fc62cf889b6a79': { name: '智能体平台/大数据平台', contact: '侯越（00018655）' },
+            '872cc0ff771dae84017724086d15003d': { name: '云服务大数据_内容分发-默认空间（废弃）', contact: '朱栗君（00033339）' },
+            '59c703a1a28d4a71bcfd213b6563179b': { name: '运维平台-默认空间（废弃）', contact: '简昕玥（00033470）' },
+            '872cc0ff763db3950176427d157b036b': { name: 'AI平台', contact: '侯越（00018655）' },
+            '4555a47bc4be48f2b00ce766d79e9171': { name: '云服务大数据_应用分发-默认空间', contact: '郑天吉（00029636）' },
+            '972df19addaa4a43a642f77ec8556e41': { name: '云服务大数据_基础云-默认空间', contact: '胡垚伟（00014133）' },
+            '872cc0ff76b31fc40176cb6b802a003a': { name: '稳定性交付-默认空间', contact: '武雨轩（00034357）' },
+            'a059e0393fb04aa4b90f17cad412f432': { name: '云服务大数据_内容分发_正确APPID', contact: '朱栗君（00033339）' },
+            '872cc0ff763db3950176427d13d2030e': { name: '营销服_零售-默认空间', contact: '卜小港（00011642）' },
+            '872cc388765bf25c0176613614ac0099': { name: '营销服_电商-默认空间', contact: '卜小港（00011642）' },
+            'c342f96ca75c4745afd54a484282d3fc': { name: '营销服_服务-默认空间', contact: '卜小港（00011642）' },
+            '872cc0ff763db3950176427d15ed0389': { name: '营销服_2c交易-默认空间', contact: '卜小港（00011642）' },
+            '872cc388765bf25c0176648081b20196': { name: '营销服_营销-默认空间', contact: '卜小港（00011642）' },
+            '872cc1727666e999017692608b5b012c': { name: '营销服_渠道-默认空间', contact: '卜小港（00011642）' },
+            '771ce188b35343ad89a085cb76b3a563': { name: '营销服-默认空间', contact: '卜小港（00011642）' },
+            '0057bf1676b24d899e4b71e2d8d0c3f6': { name: 'IAAS平台-默认空间', contact: '马传琦（00018501）' },
+            '6c20d2a31d83426ebb9ce4cdc71a88c9': { name: '云服务大数据平台现网环境_腾讯云-默认空间', contact: '胡垚伟（00014133）' },
+            'd2c48c9a99ce42b29914478e45fd000e': { name: '财管报FPM', contact: '庄锦武（00021071）' },
+            'a4bf6f6e56a943a5b586cf5c8d1af93d': { name: 'IT_MSS_MKT', contact: '王焱章（00011360）' },
+            '451955acc01743dc9bcfe195deea392f': { name: '云服务大数据_商推平台-默认空间', contact: '邱盛昌（00032093）' },
+            '541db964d6674cb98bcc0cd71123d6f9': { name: '账号运维-默认空间', contact: '张培培（00029476）' },
+            '872cc0ff763db395017646f47a9b04ac': { name: '财经-默认空间', contact: '张球（00011356）' },
+            '872cc0ff7756e8d00177857e2e7e011b': { name: '安全隐私合规测试-默认空间', contact: '公方龙（00015644）' },
+            '267d16c884b64572b8f78e38a71ece75': { name: '供应-默认空间', contact: '彭菁俊（00014126）' },
+            '2bcce53f405143b4ae3758399edbf9c9': { name: '运维平台-默认空间', contact: '董俊（00014886）' },
+            '5643dcddc79a4326bc18651d57387d66': { name: '云服务大数据-智慧服务-默认空间、云服务大数据_数据分析-默认空间', contact: '林超（00031983）' },
+            '872cc0ff76b31fc4017704af57dc0256': { name: '采购-默认空间', contact: '舒宗卷（00011624）' },
+            '8c3abbeb6c004a619ec5688ffc27e223': { name: '安全平台-默认空间', contact: '孔钦民（00025058）' },
+            '872cc3887666e9fe01768a00775f00c1': { name: '维护与定制开发部AI提效-默认空间', contact: '武雨轩（00034357）' },
+            'test_20260416': { name: 'test_20260416测试使用', contact: '高君侠（W0132248）' },
+            '3907ed67e871417fafda18b25c92237b': { name: '云服务用户画像-默认空间', contact: '王伟标（00023169）' },
+            '5b0932b222bc40cb99d9f1a0e0e319ed': { name: '云服务大数据_游戏中心-默认空间', contact: '罗少泽（00020982）' },
+            'fc320518222d4c888857ad0876d975c1': { name: '主题', contact: '庞坤毅（00018534）' },
+            'a527a7a909734ac592fd172dbc4ede3c': { name: '云服务大数据_ODIP-默认空间', contact: '李东晖（00031734）' },
+            '872cc38876b31f050176dc50b9ff00ee': { name: '测试者桌面-默认空间', contact: '马勇（00011528）' },
+            '8419bae3f6874c81ba394829e70a211b': { name: '白泽VOC_OS体验测试部', contact: '徐家运（00021233）' },
+            '872cc0ff763db3950176427d14b7033e': { name: '营销服AIGC-默认空间', contact: '周元金（00011445）' },
+            '08e7b07a257a4808960a80afef582fb1': { name: '互联网知识库专用空间', contact: '殷顺明（00029266）' },
+            '872cc0ff763db395017646f47b1904c4': { name: '供应链-制造', contact: '郭俊琦(00019766)' },
+            'a954f46bd4ac48b9aead834b74d0b691': { name: '互联网效能组-默认空间', contact: '刘天民（00021633）' },
+            '872cc388765bf25c017663f0166a00c1': { name: '财经_FIN-默认空间', contact: '王绥升（00022294）' },
+            'd478a70e8e454b24b90420da47b89761': { name: '大数据AIGC-默认空间', contact: '闫行一（00028532）' },
+            '32f3ca7dea2347e5b0f1059bae0d63d3': { name: '营销增长中心-默认空间', contact: '汤德鑫（00027694）' },
+            'ee11c516f0274a5cb485d40a4dda3406': { name: 'AI使能测试组-默认空间', contact: '文锐（00012491）' },
+            '5fb9967f159744da92f642a211d80865': { name: '营销服_IOC-默认空间', contact: '谢桂芹（00011610）' },
+            'test_20260327': { name: '测试数据', contact: '高君侠（W0132248）' },
+            'test_20260324': { name: 'test', contact: '高君侠（W0132248）' }
+        };
+
+        function billInit() {
+            billLoadPriceConfig(billDefaultPrices);
+            billSetupEventListeners();
+        }
+
+        function billLoadPriceConfig(config) {
+            billPriceConfig = config;
+            billRenderPriceConfig();
+        }
+
+        function billRenderPriceConfig() {
+            const container = document.getElementById('billPriceConfig');
+            container.innerHTML = '';
+            Object.keys(billPriceConfig).forEach(model => {
+                const item = document.createElement('div');
+                item.className = 'bill-price-item';
+                item.innerHTML = `
+                    <h3>${model}</h3>
+                    <div class="bill-price-input-group">
+                        <label>输入单价:</label>
+                        <input type="number" step="0.01" value="${billPriceConfig[model].input}" 
+                               data-model="${model}" data-type="input">
+                    </div>
+                    <div class="bill-price-input-group">
+                        <label>输出单价:</label>
+                        <input type="number" step="0.01" value="${billPriceConfig[model].output}" 
+                               data-model="${model}" data-type="output">
+                    </div>
+                    <div class="bill-price-input-group">
+                        <label>缓存单价:</label>
+                        <input type="number" step="0.01" value="${billPriceConfig[model].cache}" 
+                               data-model="${model}" data-type="cache">
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+
+            container.querySelectorAll('input').forEach(input => {
+                input.addEventListener('change', billUpdatePriceConfig);
+            });
+        }
+
+        function billUpdatePriceConfig(e) {
+            const model = e.target.dataset.model;
+            const type = e.target.dataset.type;
+            billPriceConfig[model][type] = parseFloat(e.target.value);
+        }
+
+        function billAddModel(modelName) {
+            if (!billPriceConfig[modelName]) {
+                billPriceConfig[modelName] = { input: 0, output: 0, cache: 0 };
+                billRenderPriceConfig();
+            }
+        }
+
+        function billSetupEventListeners() {
+            document.getElementById('billFile').addEventListener('change', billHandleBillFile);
+            document.getElementById('configFile').addEventListener('change', billHandleConfigFile);
+            document.getElementById('billExportBtn').addEventListener('click', billExportResults);
+            document.getElementById('billResetBtn').addEventListener('click', billResetAll);
+            document.getElementById('billSaveConfigBtn').addEventListener('click', billSaveConfigToFile);
+        }
+
+        function billResetAll() {
+            billData = [];
+            billCalculatedData = [];
+            billSummaryData = [];
+            billLoadPriceConfig(billDefaultPrices);
+            document.getElementById('billFile').value = '';
+            document.getElementById('configFile').value = '';
+            document.getElementById('billStatsSection').classList.add('bill-hidden');
+            document.getElementById('billDetailSection').classList.add('bill-hidden');
+            document.getElementById('billSummarySection').classList.add('bill-hidden');
+            document.getElementById('billDetailBody').innerHTML = '';
+            document.getElementById('billSummaryBody').innerHTML = '';
+            document.getElementById('billStatsContainer').innerHTML = '';
+            document.getElementById('billExportBtn').disabled = true;
+            document.getElementById('billFileMessage').innerHTML = '';
+            billShowMessage('已重置到初始状态', 'success');
+        }
+
+        function billHandleBillFile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            billShowMessage('正在读取文件...', 'success');
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    const data = new Uint8Array(event.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+
+                    if (jsonData.length === 0) {
+                        billShowMessage('文件为空', 'error');
+                        return;
+                    }
+
+                    billData = jsonData;
+                    billShowMessage(`成功导入 ${jsonData.length} 条记录`, 'success');
+
+                    const models = [...new Set(jsonData.map(row => row['模型']))];
+                    models.forEach(model => billAddModel(model));
+
+                    billCalculateCosts();
+                    document.getElementById('billExportBtn').disabled = false;
+
+                } catch (error) {
+                    billShowMessage('文件读取失败: ' + error.message, 'error');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function billHandleConfigFile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    const config = JSON.parse(event.target.result);
+                    billLoadPriceConfig(config);
+                    billShowMessage('单价配置导入成功', 'success');
+
+                    if (billData.length > 0) {
+                        billCalculateCosts();
+                    }
+                } catch (error) {
+                    billShowMessage('配置文件读取失败: ' + error.message, 'error');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function billCalculateCosts() {
+            const grouped = {};
+            const invalidRows = [];
+
+            billData.forEach((row, index) => {
+                const date = row['日期'];
+                const app = row['应用'];
+                const model = row['模型'];
+
+                if (!date || !app || !model) {
+                    invalidRows.push(index + 2);
+                    return;
+                }
+
+                const month = String(date).substring(0, 7);
+                const key = `${month}|${app}|${model}`;
+
+                if (!grouped[key]) {
+                    grouped[key] = {
+                        month,
+                        app,
+                        model,
+                        cacheToken: 0,
+                        inputToken: 0,
+                        outputToken: 0
+                    };
+                }
+
+                grouped[key].cacheToken += parseFloat(row['缓存token'] || 0);
+                grouped[key].inputToken += parseFloat(row['输入token'] || 0);
+                grouped[key].outputToken += parseFloat(row['输出token'] || 0);
+            });
+
+            if (invalidRows.length > 0) {
+                billShowMessage(`警告: 以下行数据不完整已跳过: ${invalidRows.slice(0, 10).join(', ')}${invalidRows.length > 10 ? '...' : ''}`, 'error');
+            }
+
+            billCalculatedData = Object.values(grouped).map(item => {
+                const prices = billPriceConfig[item.model];
+                if (!prices) {
+                    billShowMessage(`警告: 模型 ${item.model} 未配置单价`, 'error');
+                    return { ...item, subtotal: 0 };
+                }
+
+                const subtotal = 
+                    (item.inputToken - item.cacheToken) / 1000000 * prices.input +
+                    item.outputToken / 1000000 * prices.output +
+                    item.cacheToken / 1000000 * prices.cache;
+
+                return { ...item, subtotal };
+            });
+
+            const summaryGrouped = {};
+            billCalculatedData.forEach(item => {
+                const key = `${item.month}|${item.app}`;
+                if (!summaryGrouped[key]) {
+                    const appInfo = billAppConfig[item.app] || { name: '未知应用', contact: '未知' };
+                    summaryGrouped[key] = {
+                        month: item.month,
+                        app: item.app,
+                        businessDomain: appInfo.name,
+                        contact: appInfo.contact,
+                        totalCost: 0
+                    };
+                }
+                summaryGrouped[key].totalCost += item.subtotal;
+            });
+
+            billSummaryData = Object.values(summaryGrouped);
+            billRenderResults();
+        }
+
+        function billRenderResults() {
+            document.getElementById('billStatsSection').classList.remove('bill-hidden');
+            const statsContainer = document.getElementById('billStatsContainer');
+            const totalCost = billSummaryData.reduce((sum, item) => sum + item.totalCost, 0);
+            const totalRecords = billData.length;
+            const uniqueMonths = [...new Set(billCalculatedData.map(d => d.month))].length;
+            const uniqueApps = [...new Set(billCalculatedData.map(d => d.app))].length;
+
+            statsContainer.innerHTML = `
+                <div class="bill-stat-card">
+                    <h3>总记录数</h3>
+                    <div class="value">${totalRecords}</div>
+                </div>
+                <div class="bill-stat-card">
+                    <h3>月份数</h3>
+                    <div class="value">${uniqueMonths}</div>
+                </div>
+                <div class="bill-stat-card">
+                    <h3>应用数</h3>
+                    <div class="value">${uniqueApps}</div>
+                </div>
+                <div class="bill-stat-card">
+                    <h3>总费用</h3>
+                    <div class="value">¥${totalCost.toFixed(2)}</div>
+                </div>
+            `;
+
+            document.getElementById('billDetailSection').classList.remove('bill-hidden');
+            const detailBody = document.getElementById('billDetailBody');
+            detailBody.innerHTML = '';
+
+            billCalculatedData.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.month}</td>
+                    <td>${item.app}</td>
+                    <td>${item.model}</td>
+                    <td>${billFormatNumber(item.cacheToken)}</td>
+                    <td>${billFormatNumber(item.inputToken)}</td>
+                    <td>${billFormatNumber(item.outputToken)}</td>
+                    <td>¥${item.subtotal.toFixed(2)}</td>
+                `;
+                detailBody.appendChild(row);
+            });
+
+            document.getElementById('billSummarySection').classList.remove('bill-hidden');
+            const summaryBody = document.getElementById('billSummaryBody');
+            summaryBody.innerHTML = '';
+
+            billSummaryData.forEach(item => {
+                const row = document.createElement('tr');
+                row.className = 'bill-summary-row';
+                row.innerHTML = `
+                    <td>${item.businessDomain}</td>
+                    <td></td>
+                    <td>0</td>
+                    <td>¥${item.totalCost.toFixed(2)}</td>
+                    <td>¥${item.totalCost.toFixed(2)}</td>
+                    <td>${item.contact}</td>
+                    <td></td>
+                    <td></td>
+                `;
+                summaryBody.appendChild(row);
+            });
+
+            const totalRow = document.createElement('tr');
+            totalRow.className = 'bill-total-row';
+            const grandTotal = billSummaryData.reduce((sum, item) => sum + item.totalCost, 0);
+            totalRow.innerHTML = `
+                <td>总计</td>
+                <td></td>
+                <td>0</td>
+                <td>¥${grandTotal.toFixed(2)}</td>
+                <td>¥${grandTotal.toFixed(2)}</td>
+                <td></td>
+                <td></td>
+                <td></td>
+            `;
+            summaryBody.appendChild(totalRow);
+        }
+
+        function billFormatNumber(num) {
+            return num.toLocaleString('zh-CN', { maximumFractionDigits: 0 });
+        }
+
+        function billExportResults() {
+            const wb = XLSX.utils.book_new();
+
+            const detailWS = XLSX.utils.json_to_sheet(billCalculatedData.map(item => ({
+                '月份': item.month,
+                '应用': item.app,
+                '模型': item.model,
+                '缓存Token': item.cacheToken,
+                '输入Token': item.inputToken,
+                '输出Token': item.outputToken,
+                '小计（元）': item.subtotal.toFixed(2)
+            })));
+            XLSX.utils.book_append_sheet(wb, detailWS, '详细计算结果');
+
+            const monthGroups = {};
+            billSummaryData.forEach(item => {
+                if (!monthGroups[item.month]) {
+                    monthGroups[item.month] = [];
+                }
+                monthGroups[item.month].push(item);
+            });
+
+            Object.keys(monthGroups).sort().forEach(month => {
+                const monthData = monthGroups[month];
+                const monthWS = XLSX.utils.json_to_sheet(monthData.map(item => ({
+                    '业务领域': item.businessDomain,
+                    '订阅名称': '',
+                    '费用（人民币）': 0,
+                    '南天门账单费用（人民币）': item.totalCost.toFixed(2),
+                    '总费用': item.totalCost.toFixed(2),
+                    '对接人': item.contact,
+                    '确认无误': '',
+                    '部门': ''
+                })));
+
+                const grandTotal = monthData.reduce((sum, item) => sum + item.totalCost, 0);
+                const totalRow = [
+                    { v: '总计' },
+                    { v: '' },
+                    { v: 0 },
+                    { v: grandTotal.toFixed(2) },
+                    { v: grandTotal.toFixed(2) },
+                    { v: '' },
+                    { v: '' },
+                    { v: '' }
+                ];
+                
+                const rowCount = monthWS['!ref'] ? XLSX.utils.decode_range(monthWS['!ref']).e.r + 1 : 0;
+                totalRow.forEach((cell, colIndex) => {
+                    const cellRef = XLSX.utils.encode_cell({ r: rowCount, c: colIndex });
+                    monthWS[cellRef] = cell;
+                });
+
+                const sheetName = month.replace('-', '');
+                XLSX.utils.book_append_sheet(wb, monthWS, sheetName);
+            });
+
+            const date = new Date().toISOString().split('T')[0];
+            XLSX.writeFile(wb, `账单计算结果_${date}.xlsx`);
+            billShowMessage('导出成功', 'success');
+        }
+
+        function billSaveConfigToFile() {
+            const configStr = JSON.stringify(billPriceConfig, null, 2);
+            const blob = new Blob([configStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'price_config.json';
+            a.click();
+            URL.revokeObjectURL(url);
+            billShowMessage('配置已保存', 'success');
+        }
+
+        function billShowMessage(msg, type) {
+            const fileMessage = document.getElementById('billFileMessage');
+            fileMessage.innerHTML = `<div class="bill-message ${type}">${msg}</div>`;
+            setTimeout(() => {
+                fileMessage.innerHTML = '';
+            }, 3000);
+        }
+
+        // 初始化账单计算器
+        billInit();
     </script>
 </body>
 </html>
